@@ -1,0 +1,37 @@
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                      http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1"
+         metadata-complete="true">
+
+    <!--1.配置中央处理器的Servlet,DispatcherServlet-->
+    <servlet>
+        <servlet-name>seckill-dispatcher</servlet-name>
+        <servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+        <!--
+           2. 配置SpringMVC 需要加载的配置的文件
+            spring-dao.xml，spring-service.xml,spring-web.xml
+            Mybatis-> spring -> springMVC
+        -->
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>classpath:spring/spring-*.xml</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+      <servlet-name>seckill-dispatcher</servlet-name>
+       <!--默认匹配所有请求-->
+      <url-pattern>/</url-pattern>
+   </servlet-mapping>
+
+</web-app>
+
+        <!--<!DOCTYPE web-app PUBLIC
+         "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+         "http://java.sun.com/dtd/web-app_2_3.dtd" >-->
+        <!-- 自动生成的是Servlet2.3版本，是一个比较老的版本，它存在一个问题就是jsp 默认的el表达式是不工作的。我们需要把它升级到更高的版本 -->
+        <!--<web-app>
+          <display-name>Archetype Created Web Application</display-name>
+        </web-app>-->
+        <!--升级的方法就是进入tomcat中webapps\examples\WEB-INF下的web.xml中将它的头信息粘贴过来。-->

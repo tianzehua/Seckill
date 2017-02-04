@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx-3.0.xsd">
+    <!--Spring的IOC的理解
+       （1）对于Spring的IOC的理解，首先是对象工厂，对象工厂可以帮我们创建service等，管理依赖，最后给我们一个一致的访问接口。
+       来访问我们工厂中任意的实例。
+       业务对象依赖图：
+       SeckillService (1)SeckillDao
+                      (2)SuccessKilledDao
+               (1),(2)都依赖于SqlSessionFactory,当然这个代码是mybatis为我们自动生成的。
+               而SqlSessionFactory又需要DataSource....等实现。
+           所以spring为我们做了一整个初始化的过程。
+        （2）为什么要用IOC呢？
+             1.对象创建统一托管。不用像我们之前需要new一个对象。
+             2.规范的生命周期管理。
+             3.灵活的依赖注入。可以通过注解也可以通过编程。也可以通过第三方框架帮我们自动整合。比如说spring与mybatis的整合。
+             4.一致的获取对象。我们可以从容器中拿我们任意已知的实例。
+
+         （3）Spring-IOC的注入方式和场景：
+             1.XML：Bean实现类来自第三方类库：如：DataSource等，需要命名空间配置，如context，aop,mvc等
+             2.注解：项目中自身开发使用类可以直接在项目代码中使用注解，如，@Serivce
+             3.Java配置类：需要通过代码控制对象创建逻辑的场景，如：自定义修改类库。
+         （4）使用spring的方式：XML配置+package-scan+Annotation注解
+
+    -->
+    <!--用这个配置文件配置什么呢？就是扫描service下所有使用注解的类型，然后初始化这个类型，放在spring容器中进管理。
+    -->
+
+    <context:component-scan base-package="org.seckill.service"/>
+
+    <!--对于service的依赖只有上面的一句话。剩下的就是基于本项目来做一下自己的配置。
+    spring给提供了几种注解：
+         （1）@Component :代表所有的组件。当你不知道它是一个service,Conroller,或者dao时采用这种方法。是spring实例的总称。
+         （2）@Service
+          (3) @Dao
+          (4) @Conroller
+    -->
+
+    <!--声明式事务的使用方式:
+    1.早期使用的方式:ProxyFactoryBean+XMl.
+    2.tx:advice+aop命名空间，这种配置的好处就是一次配置永久生效。
+    3.注解@Transactional的方式。
+    在实际开发中，建议使用第三种对我们的事务进行控制
+    -->
+
+    <!--只有当抛出运行期异常的时候，事务才会回滚。
+    spring对于事务的处理方式是这样的：当有新的事务加进来的时候，如果有事务，就加入到原有的事务当中，
+    如果没有事务，就新建一个事务。
+    -->
+
+    <!--配置事务-->
+    <!--首先配置事务管理器，mybatis使用的是jdbc的事务管理器，hibernate用的是hibernate的事务管理器-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <!--注入数据库连接池-->
+        <property name="dataSource" ref="dataSource"/>
+
+    </bean>
+    <!--配置基于注解的声明式事务
+     默认使用注解来管理事务行为-->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+</beans>
