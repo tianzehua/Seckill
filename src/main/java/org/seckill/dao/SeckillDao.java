@@ -5,6 +5,7 @@ import org.seckill.entity.Seckill;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jh on 2017/1/24.
@@ -36,4 +37,10 @@ public interface SeckillDao {
     //java没有保存形参的记录，当多于一个参数进行传递时，
     // Java传的是：arg0,arg1,所以多个参数无法绑定。所以mybatis使用@param绑定参数。
     List<Seckill> queryAll(@Param("offset") int off,@Param("limit") int limit);
+
+    /**
+     * 使用存储过程来执行秒杀
+     * @param paramMap
+     */
+    void  killByProcedure(Map<String,Object> paramMap);
 }

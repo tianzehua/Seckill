@@ -154,9 +154,39 @@
           <version>4.11</version>
           <scope>test</scope>
       </dependency>
+
+
+
+    <!--5.引入redis客户端，是Jedis-->
+    <dependency>
+      <groupId>redis.clients</groupId>
+      <artifactId>jedis</artifactId>
+      <version>2.7.3</version>
+    </dependency>
+
+    <!--7.引入第三方的序列化工具protostuff-->
+    <dependency>
+      <groupId>com.dyuproject.protostuff</groupId>
+      <artifactId>protostuff-core</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>com.dyuproject.protostuff</groupId>
+      <artifactId>protostuff-runtime</artifactId>
+      <version>1.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <version>3.2</version>
+    </dependency>
+
+
   </dependencies>
   <build>
     <finalName>seckill</finalName>
+
+    <!--6.引入tomcat-->
     <plugins>
       <plugin>
         <groupId>org.apache.tomcat.maven</groupId>

@@ -1,5 +1,8 @@
 package org.seckill.service.impl;
 
+import com.mchange.v2.util.DoubleWeakHashMap;
+import org.apache.commons.collections.MapUtils;
+import org.seckill.dao.Cache.RedisDao;
 import org.seckill.dao.SeckillDao;
 import org.seckill.dao.SuccessKilledDao;
 import org.seckill.dto.Exposer;
@@ -18,8 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.DigestUtils;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.Map;
 
 /**
  * Created by jh on 2017/1/26.
@@ -34,10 +38,14 @@ public class SeckillServiceImpl implements SeckillService {
     private SeckillDao seckillDao;
 
     @Autowired
+    private RedisDao redisDao;
+
+    @Autowired
     private SuccessKilledDao successKilledDao;
 
     //加入混淆的盐值。随便敲，越复杂越好。用于混淆MD5.
     private  final  String slat = "sfdhkajsklvnilvjUOIhi32##**&^%$%$%&*$##@iwqf9382r89042HKAHKiljlkj";
+
 
 
 
@@ -50,7 +58,33 @@ public class SeckillServiceImpl implements SeckillService {
     }
     //当秒杀开始后暴露接口，否则返回系统时间。
     public Exposer exportSeckillUrl(long seckillId) {
-        Seckill seckill = seckillDao.queryById(seckillId);
+
+        //优化点：缓存优化，将这个方法放入Redis中进行缓存，减少数据库的访问。
+        /**
+         * 我们先写伪代码，模拟整个缓存的过程。
+         *
+         * get from cache
+         * if null
+         * get db
+         * else
+         *    put cache
+         * locgin
+         *
+         */
+        //1.首先访问redis。
+        Seckill seckill = redisDao.getSeckill(seckillId);
+        if (seckill == null){
+            //2.访问数据库
+            seckill = seckillDao.queryById(seckillId);
+            if (seckill == null){
+                return  new Exposer(false,seckillId);
+            }else{
+                //3.放入redis
+                redisDao.putSeckill(seckill);
+            }
+        }
+
+        //Seckill seckill = seckillDao.queryById(seckillId);
         if(seckill == null){
             return  new Exposer(false,seckillId);
         }
@@ -95,21 +129,21 @@ public class SeckillServiceImpl implements SeckillService {
         //执行秒杀逻辑。减库存，加记录购买行为。
         Date nowTime = new Date();
         try {
-            int updateCount = seckillDao.reduceNumber(seckillId,nowTime);
-            if (updateCount <= 0){
-                //没有更新到记录。表示的就是秒杀结束了。我们不关心结束的原因。
-                //是因为没有库存了，还是因为时间结束了。
-                throw  new SeckillCloseException("seckill is closed");
-            }else{
-                //记录购买行为。
-                int insertCount = successKilledDao.insertSuccessKilled(seckillId,userPhone);
-                if (insertCount <= 0){
-                    //意味着重复秒杀了。
-                    throw  new RepeatKillException("seckill repeated(重复秒杀了)");
-                }else{
+            //记录购买行为。
+            int insertCount = successKilledDao.insertSuccessKilled(seckillId,userPhone);
+            if (insertCount <= 0){
+                //意味着重复秒杀了。
+                throw  new RepeatKillException("seckill repeated(重复秒杀了)");
+            }else {
+                int updateCount = seckillDao.reduceNumber(seckillId, nowTime);
+                if (updateCount <= 0) {
+                    //没有更新到记录。表示的就是秒杀结束了。我们不关心结束的原因。
+                    //是因为没有库存了，还是因为时间结束了。
+                    throw new SeckillCloseException("seckill is closed");
+                } else {
                     //秒杀成功
-                    SuccessKilled successKilled = successKilledDao.queryByIdWithSeckill(seckillId,userPhone);
-                    return  new SeckillExecution(seckillId, SeckillStatEnum.SUCCESS,successKilled);
+                    SuccessKilled successKilled = successKilledDao.queryByIdWithSeckill(seckillId, userPhone);
+                    return new SeckillExecution(seckillId, SeckillStatEnum.SUCCESS, successKilled);
                 }
             }
         } catch (SeckillCloseException e1) {
@@ -122,4 +156,33 @@ public class SeckillServiceImpl implements SeckillService {
             throw  new SeckillException("seckill inner error:"+e.getMessage());
         }
     }
+
+    public SeckillExecution executeSeckillProcedure(long seckillId, long userPhone, String md5)  {
+        if (md5 == null || !md5.equals(getMD5(seckillId))){
+            return   new SeckillExecution(seckillId,SeckillStatEnum.DATE_REWRITE);
+        }
+        Date killTime = new Date();
+        Map<String,Object> map = new HashMap();
+        map.put("seckillId",seckillId);
+        map.put("phone",userPhone);
+        map.put("killTime",killTime);
+        map.put("result",null);
+
+
+        try {
+            seckillDao.killByProcedure(map);
+          int result =  MapUtils.getInteger(map,"result",-2);
+            if (result == 1){
+                SuccessKilled sk = successKilledDao.queryByIdWithSeckill(seckillId,userPhone);
+                return  new SeckillExecution(seckillId,SeckillStatEnum.SUCCESS,sk);
+            }else {
+                return new SeckillExecution(seckillId, SeckillStatEnum.stateOf(result));
+            }
+        } catch (Exception e) {
+            logger.error(e.getMessage(),e);
+            return new SeckillExecution(seckillId, SeckillStatEnum.INNER_ERROR);
+        }
+    }
+
+
 }
